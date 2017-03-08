@@ -1,0 +1,10 @@
+TYPE="Ethernet"
+BOOTPROTO="none"
+DEFROUTE="yes"
+DEVICE="eth1"
+ONBOOT="yes"
+IPADDR="<IP>"
+PREFIX="24"
+GATEWAY="<GW>"
+DNS1="<DNS>"
+

@@ -1,0 +1,48 @@
+#-*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.define "haproxy", primary: true do |haproxy|
+    haproxy.vm.box = "centos/7"
+    haproxy.vm.hostname = "haproxy"
+    haproxy.vm.box_check_update = false
+    haproxy.vm.network "public_network", bridge: "<BRIDGEDEV>", auto_config: false
+    	
+    haproxy.vm.provision "shell", inline: "cp /vagrant/ifcfg-eth1_$HOSTNAME /etc/sysconfig/network-scripts/ifcfg-eth1"
+    haproxy.vm.provision "shell", inline: "systemctl restart network"
+    haproxy.vm.provision "shell", inline: <<-SHELL
+    yum install haproxy -y
+    yum install socat -y
+
+    cp /vagrant/haproxy.cfg /etc/haproxy/haproxy.cfg
+    systemctl enable haproxy
+    systemctl start haproxy 
+
+    echo Setup HAProxy logging
+    sed -i 's/\#\$ModLoad imudp/\$ModLoad imudp/' /etc/rsyslog.conf
+    sed -i 's/\#\$UDPServerRun 514/\$UDPServerRun 514/' /etc/rsyslog.conf
+    echo local2.* /var/log/haproxy.log > /etc/rsyslog.d/haproxy.conf
+    systemctl restart rsyslog
+    SHELL
+  end
+
+  (1..2).each do |x|
+    config.vm.define "nginx#{x}" do |nginx|
+      nginx.vm.box = "centos/7"
+      nginx.vm.hostname = "nginx#{x}"
+      nginx.vm.box_check_update = false
+      nginx.vm.network "public_network", bridge: "<BRIDGEDEV>", auto_config: false
+		
+      nginx.vm.provision "shell", inline: "cp /vagrant/ifcfg-eth1_$HOSTNAME /etc/sysconfig/network-scripts/ifcfg-eth1"
+      nginx.vm.provision "shell", inline: "systemctl restart network"
+      nginx.vm.provision "shell", inline: <<-SHELL
+      yum install epel-release -y
+      yum install nginx -y
+      systemctl enable nginx
+      systemctl start nginx
+      echo Server: $HOSTNAME > /usr/share/nginx/html/index.html
+      SHELL
+    end
+  end
+
+end
